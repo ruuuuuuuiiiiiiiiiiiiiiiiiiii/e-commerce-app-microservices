@@ -6,6 +6,8 @@ import com.laureles.ecommerce.kafka.OrderConfirmation;
 import com.laureles.ecommerce.kafka.OrderProducer;
 import com.laureles.ecommerce.orderline.OrderLineRequest;
 import com.laureles.ecommerce.orderline.OrderLineService;
+import com.laureles.ecommerce.payment.PaymentClient;
+import com.laureles.ecommerce.payment.PaymentRequest;
 import com.laureles.ecommerce.product.ProductClient;
 import com.laureles.ecommerce.product.PurchaseRequest;
 import jakarta.persistence.EntityNotFoundException;
@@ -26,6 +28,7 @@ public class OrderService {
     private final OrderMapper orderMapper;
     private final OrderLineService orderLineService;
     private final OrderProducer orderProducer;
+    private final PaymentClient paymentClient;
 
     public Integer createOrder(OrderRequest request) {
         //check customer --> OpenFeign
@@ -51,6 +54,15 @@ public class OrderService {
         }
 
         // todo start payment process
+        var paymentRequest = new PaymentRequest(
+                request.amount(),
+                request.paymentMethod(),
+                order.getId(),
+                order.getReference(),
+                customer
+        );
+
+        paymentClient.requestOrderPayment(paymentRequest);
 
         // send order confirmation --> notification-ms (kafka)
         orderProducer.sendOrderConfirmation(
